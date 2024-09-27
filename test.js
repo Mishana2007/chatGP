@@ -7,20 +7,16 @@ const fs = require('fs');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');  
 const path = require('path');
-// const { extractTextFromExcel } = require('excel-utils'); // Функция для извлечения текста из Excel
-// const { extractTextFromWord } = require('word-utils'); // Функция для извлечения текста из Word
 const schedule = require('node-schedule');
 const xlsx = require('xlsx');
 require('dotenv').config();
 
 // Замените YOUR_BOT_TOKEN на токен вашего бота, который вы получили у BotFather
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
-// 7507226128:AAFZnECFi1hWenTbFByqNW3niVo1jF1YWCQ
 const shopId = process.env.shopId;
 const secretKey = process.env.secretKey;
 const channelId = '@evolution_projekt';
 
-// Замените YOUR_OPENAI_API_KEY на ваш API-ключ OpenAI
 const openai = new OpenAI({
     apiKey: process.env.apiKey,
 });
@@ -165,6 +161,36 @@ db.serialize(() => {
             FOREIGN KEY(user_id) REFERENCES users(telegram_id)
         )
     `);
+    admins.forEach(adminId => {
+        db.get(`SELECT * FROM users WHERE telegram_id = ?`, [adminId], (err, row) => {
+            if (err) {
+                console.error(`Ошибка при запросе пользователя: ${err.message}`);
+                return;
+            }
+
+            // Если админа нет в базе данных
+            if (!row) {
+                console.log(`Добавление администратора с ID ${adminId} и главной подпиской`);
+
+                const plan = 'премиум 🌟';
+                const requests = 1000;
+
+                db.run(`
+                    INSERT INTO users (telegram_id, subscription, plan, requests)
+                    VALUES (?, ?, ?, ?)
+                `, [adminId, true, plan, requests], (err) => {
+                    if (err) {
+                        console.error(`Ошибка при добавлении администратора: ${err.message}`);
+                    } else {
+                        console.log(`Администратор с ID ${adminId} успешно добавлен.`);
+                    }
+                });
+            } else {
+                // Если админ уже есть, можно обновить данные при необходимости
+                console.log(`Администратор с ID ${adminId} уже существует.`);
+            }
+        });
+    });
 });
 
 // Функция для сохранения информации о пользователе и его подписке в базу данных
@@ -419,7 +445,7 @@ bot.onText(/\/start/, async (msg) => {
                 } catch (error) {
                     console.error('Ошибка при периодической проверке подписки:', error);
                 }
-            }, 100000); // Проверка каждые 100 секунд
+            }, 30000); // Проверка каждые 30 секунд
         } else {
             addUser(chatId, (err) => {
                 if (err) {
@@ -427,19 +453,35 @@ bot.onText(/\/start/, async (msg) => {
                     bot.sendMessage(chatId, 'Произошла ошибка при добавлении вас в базу данных.');
                     return;
                 }})
-            
             bot.sendPhoto(chatId, 'photo.jpg', {
-            caption: `Выберите действие`,
+            caption: `Приветствую тебя 👋
+        
+Я ZEVS ⚡️- твой универсальный помощник 24/7 
+
+Я помогу тебе в любых твоих вопросах и задачах. Независимо от того, с чем ты столкнулся — будь то программирование, учеба, личные вопросы или просто желание поговорить
+
+🧑‍💻Помощь с кодом или техническими вопросами?
+
+🧠Советы по личному 
+развитию и карьере?
+
+💡Идеи для новых проектов?
+
+📚Поиск информации или 
+материалов для учебы?
+
+🌎Любой другой вопрос или проблема?
+
+Просто задай свой вопрос, и я сделаю всё, чтобы тебе помочь 👇
+
+⭐️Обязательно закрепи меня, чтобы я не потерялся и продолжил тебе помогать!`,
             reply_markup: {
                 inline_keyboard: [
-                    [{ text: truncateText('Задать вопрос'), callback_data: 'ask_question' }],
                     [
-                        { text: truncateText('Выборать тему'), callback_data: 'change_theme' },
-                        { text: truncateText('Выбор тарифа'), callback_data: 'buy_subscription' }
-                    ],
-                    [
-                        { text: truncateText('Кабинет'), callback_data: 'cabinet' },
-                        { text: truncateText('Поддержка'), callback_data: 'support' }
+                        {
+                            text: 'Начать ✨',
+                            callback_data: 'start',
+                        }
                     ]
                 ]
             }
